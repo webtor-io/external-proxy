@@ -1,6 +1,6 @@
 module github.com/webtor-io/external-proxy
 
-go 1.13
+go 1.15
 
 require (
 	github.com/joonix/log v0.0.0-20190524090622-13fe31bbdd7a
