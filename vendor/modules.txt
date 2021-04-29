@@ -25,6 +25,9 @@ github.com/sirupsen/logrus
 # github.com/urfave/cli v1.22.2
 ## explicit
 github.com/urfave/cli
+# github.com/vincent-petithory/dataurl v0.0.0-20191104211930-d1553a71de50
+## explicit
+github.com/vincent-petithory/dataurl
 # github.com/webtor-io/common-services v0.0.0-20200102124507-e840419c0302
 ## explicit
 github.com/webtor-io/common-services

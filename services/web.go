@@ -1,9 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"github.com/vincent-petithory/dataurl"
 )
 
 type Web struct {
@@ -42,11 +45,32 @@ func RegisterWebFlags(c *cli.App) {
 	})
 }
 
+func (s *Web) ServeRemote(data string) (io.ReadCloser, string, error) {
+	u, err := url.Parse(string(data))
+	if err != nil {
+		return nil, "", errors.Wrap(err, "failed to parse url")
+	}
+	resp, err := http.Get(u.String())
+	if err != nil {
+		return nil, "", errors.Wrap(err, "failed to get url")
+	}
+	t := resp.Header.Get("Content-Type")
+	return resp.Body, t, nil
+}
+
+func (s *Web) ServeData(data string) (io.ReadCloser, string, error) {
+	dataURL, err := dataurl.DecodeString(data)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "failed to parse data url")
+	}
+	return ioutil.NopCloser(bytes.NewReader(dataURL.Data)), dataURL.ContentType(), nil
+}
+
 func (s *Web) Serve() error {
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return errors.Wrap(err, "Failed to web listen to tcp connection")
+		return errors.Wrap(err, "failed to web listen to tcp connection")
 	}
 	s.ln = ln
 	mux := http.NewServeMux()
@@ -58,33 +82,33 @@ func (s *Web) Serve() error {
 		}
 		decoded, err := base64.StdEncoding.DecodeString(parts[1])
 		if err != nil {
-			log.WithError(err).Error("Failed to decode")
+			log.WithError(err).Error("failed to decode")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		u, err := url.Parse(string(decoded))
+		data := string(decoded)
+		ct := ""
+		var rc io.ReadCloser
+		if strings.HasPrefix(data, "http") {
+			rc, ct, err = s.ServeRemote(data)
+		} else if strings.HasPrefix(string(decoded), "data") {
+			rc, ct, err = s.ServeData(data)
+		}
 		if err != nil {
-			log.WithError(err).Error("Failed to parse url")
+			log.WithError(err).Error("failed to process data")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		resp, err := http.Get(u.String())
+		defer rc.Close()
+		if ct != "" {
+			w.Header().Add("Content-Type", ct)
+		}
+		_, err = io.Copy(w, rc)
 		if err != nil {
-			log.WithError(err).Error("Failed to get url")
+			log.WithError(err).Error("failed to write response")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		t := resp.Header.Get("Content-Type")
-		if t != "" {
-			w.Header().Add("Content-Type", t)
-		}
-		l, err := io.Copy(w, resp.Body)
-		if err != nil {
-			log.WithError(err).Error("Failed to fetch data")
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		log.Infof("Serving url %v, %v bytes written", u, l)
 	})
 	log.Infof("Serving Web at %v", addr)
 	return http.Serve(ln, mux)
