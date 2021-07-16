@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -113,9 +112,9 @@ func (s *Web) Serve() error {
 	})
 	log.Infof("Serving Web at %v", addr)
 	srv := &http.Server{
-		Handler:        mux,
-		ReadTimeout:    5 * time.Minute,
-		WriteTimeout:   5 * time.Minute,
+		Handler: mux,
+		// ReadTimeout:    5 * time.Minute,
+		// WriteTimeout:   5 * time.Minute,
 		MaxHeaderBytes: 50 << 20,
 	}
 	return srv.Serve(ln)
