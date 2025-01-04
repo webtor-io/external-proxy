@@ -32,21 +32,25 @@ func NewWeb(c *cli.Context) *Web {
 	return &Web{host: c.String(WEB_HOST_FLAG), port: c.Int(WEB_PORT_FLAG)}
 }
 
-func RegisterWebFlags(c *cli.App) {
-	c.Flags = append(c.Flags, cli.StringFlag{
-		Name:  WEB_HOST_FLAG,
-		Usage: "listening host",
-		Value: "",
-	})
-	c.Flags = append(c.Flags, cli.IntFlag{
-		Name:  WEB_PORT_FLAG,
-		Usage: "http listening port",
-		Value: 8080,
-	})
+func RegisterWebFlags(f []cli.Flag) []cli.Flag {
+	return append(f,
+		cli.StringFlag{
+			Name:   WEB_HOST_FLAG,
+			Usage:  "listening host",
+			Value:  "",
+			EnvVar: "WEB_HOST",
+		},
+		cli.IntFlag{
+			Name:   WEB_PORT_FLAG,
+			Usage:  "http listening port",
+			Value:  8080,
+			EnvVar: "WEB_PORT",
+		},
+	)
 }
 
 func (s *Web) ServeRemote(data string) (io.ReadCloser, string, error) {
-	u, err := url.Parse(string(data))
+	u, err := url.Parse(data)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "failed to parse url")
 	}

@@ -9,27 +9,32 @@ import (
 
 func configure(app *cli.App) {
 	app.Flags = []cli.Flag{}
-	cs.RegisterProbeFlags(app)
-	s.RegisterWebFlags(app)
+	app.Flags = cs.RegisterProbeFlags(app.Flags)
+	app.Flags = s.RegisterWebFlags(app.Flags)
 	app.Action = run
 }
 
 func run(c *cli.Context) error {
+	var servers []cs.Servable
 	// Setting ProbeService
 	probe := cs.NewProbe(c)
-	defer probe.Close()
+	if probe != nil {
+		servers = append(servers, probe)
+		defer probe.Close()
+	}
 
 	// Setting WebService
 	web := s.NewWeb(c)
 	defer web.Close()
+	servers = append(servers, web)
 
 	// Setting ServeService
-	serve := cs.NewServe(probe, web)
+	serve := cs.NewServe(servers...)
 
 	// And SERVE!
 	err := serve.Serve()
 	if err != nil {
-		log.WithError(err).Error("Got server error")
+		log.WithError(err).Error("got server error")
 	}
 	return err
 }
