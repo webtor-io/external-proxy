@@ -23,7 +23,8 @@ func run(c *cli.Context) error {
 		defer probe.Close()
 	}
 
-	// Setting WebService
+	// Setting WebService. The last defer, so it runs first: in-flight
+	// responses drain while the probe is still up.
 	web := s.NewWeb(c)
 	defer web.Close()
 	servers = append(servers, web)

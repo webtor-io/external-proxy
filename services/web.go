@@ -15,12 +15,13 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"github.com/vincent-petithory/dataurl"
+	cs "github.com/webtor-io/common-services"
 )
 
 type Web struct {
 	host string
 	port int
-	ln   net.Listener
+	gs   *cs.GracefulServer
 }
 
 const (
@@ -29,10 +30,15 @@ const (
 )
 
 func NewWeb(c *cli.Context) *Web {
-	return &Web{host: c.String(WEB_HOST_FLAG), port: c.Int(WEB_PORT_FLAG)}
+	return &Web{
+		host: c.String(WEB_HOST_FLAG),
+		port: c.Int(WEB_PORT_FLAG),
+		gs:   cs.NewGracefulServer(cs.ShutdownTimeout(c)),
+	}
 }
 
 func RegisterWebFlags(f []cli.Flag) []cli.Flag {
+	f = cs.RegisterShutdownFlags(f)
 	return append(f,
 		cli.StringFlag{
 			Name:   WEB_HOST_FLAG,
@@ -76,7 +82,11 @@ func (s *Web) Serve() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to web listen to tcp connection")
 	}
-	s.ln = ln
+	log.Infof("Serving Web at %v", addr)
+	return s.serve(ln)
+}
+
+func (s *Web) serve(ln net.Listener) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.URL.Path, "/")
@@ -114,18 +124,18 @@ func (s *Web) Serve() error {
 			return
 		}
 	})
-	log.Infof("Serving Web at %v", addr)
 	srv := &http.Server{
 		Handler: mux,
 		// ReadTimeout:    5 * time.Minute,
 		// WriteTimeout:   5 * time.Minute,
 		MaxHeaderBytes: 50 << 20,
 	}
-	return srv.Serve(ln)
+	return s.gs.Serve(srv, ln)
 }
 
+// Close stops accepting and lets in-flight responses finish, up to
+// WEB_SHUTDOWN_TIMEOUT. Closing only the listener let the process exit in the
+// middle of every response. run() defers it last, so it runs first.
 func (s *Web) Close() {
-	if s.ln != nil {
-		s.ln.Close()
-	}
+	s.gs.Close()
 }
