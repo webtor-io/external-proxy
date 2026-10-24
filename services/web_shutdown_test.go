@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/base64"
-	"flag"
 	"io"
 	"net"
 	"net/http"
@@ -10,8 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/urfave/cli"
 )
 
 // exitListener records the connections it accepts, so the test can cut them
@@ -58,11 +55,7 @@ func TestWebCloseDrainsInFlightRequest(t *testing.T) {
 	}))
 	defer src.Close()
 
-	set := flag.NewFlagSet("web", flag.ContinueOnError)
-	for _, fl := range RegisterWebFlags(nil) {
-		fl.Apply(set)
-	}
-	web := NewWeb(cli.NewContext(nil, set, nil))
+	web := newTestWeb(t, src.URL)
 	inner, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

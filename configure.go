@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	cs "github.com/webtor-io/common-services"
@@ -25,7 +26,10 @@ func run(c *cli.Context) error {
 
 	// Setting WebService. The last defer, so it runs first: in-flight
 	// responses drain while the probe is still up.
-	web := s.NewWeb(c)
+	web, err := s.NewWeb(c)
+	if err != nil {
+		return errors.Wrap(err, "failed to init web")
+	}
 	defer web.Close()
 	servers = append(servers, web)
 
@@ -33,7 +37,7 @@ func run(c *cli.Context) error {
 	serve := cs.NewServe(servers...)
 
 	// And SERVE!
-	err := serve.Serve()
+	err = serve.Serve()
 	if err != nil {
 		log.WithError(err).Error("got server error")
 	}
