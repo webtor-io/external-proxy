@@ -48,9 +48,15 @@ func TestIsPublicAddr(t *testing.T) {
 		{"64:ff9b::a00:1", false},
 		{"64:ff9b::a00:1%eth0", false},
 		{"64:ff9b:1::1", false},
+		{"::7f00:1", false},
 		{"100::1", false},
+		{"2001::1", false},
+		{"2001:2::1", false},
 		{"2001:db8::1", false},
+		{"2002:7f00:1::", false},
 		{"3fff::1", false},
+		{"5f00::1", false},
+		{"fec0::1", false},
 		{"8.8.8.8", true},
 		{"1.1.1.1", true},
 		{"172.66.40.137", true},
@@ -77,6 +83,14 @@ func TestParsePrivateNetworkOrigins(t *testing.T) {
 		if _, err := parsePrivateNetworkOrigins([]string{bad}); err == nil {
 			t.Errorf("%q accepted", bad)
 		}
+	}
+}
+
+// Through HTTP(S)_PROXY the dialer would see only the proxy's address, and a
+// public proxy would fetch anything for us.
+func TestRemoteTransportIgnoresProxyEnv(t *testing.T) {
+	if newRemoteTransport(dialPublicOnly).Proxy != nil || newRemoteTransport(nil).Proxy != nil {
+		t.Fatal("remote transport takes a proxy")
 	}
 }
 

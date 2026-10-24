@@ -28,8 +28,10 @@ const privateNetworkHint = "if this origin is trusted (e.g. this instance's own 
 
 // nonPublicPrefixes are the ranges netip has no predicate for that a fetch
 // must not reach: special-purpose ranges that are not globally reachable
-// (IANA special-purpose registries) and NAT64 prefixes, which embed an IPv4
-// address a translator would dial on our behalf.
+// (IANA special-purpose registries), deprecated site-local, and the IPv6
+// forms that embed an IPv4 address a stack, relay or translator would dial
+// on our behalf (2002:7f00:1:: and ::7f00:1 are 127.0.0.1). The same 6to4 and
+// NAT64 entries as web-ui's services/egress.
 var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("0.0.0.0/8"),       // "this network"; 0.x dials the local host on Linux
 	netip.MustParsePrefix("100.64.0.0/10"),   // shared address space (CGNAT), used by CNIs
@@ -41,9 +43,14 @@ var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("240.0.0.0/4"),     // reserved, and the 255.255.255.255 broadcast
 	netip.MustParsePrefix("64:ff9b::/96"),    // NAT64
 	netip.MustParsePrefix("64:ff9b:1::/48"),  // local-use NAT64
+	netip.MustParsePrefix("::/96"),           // IPv4-compatible, deprecated
 	netip.MustParsePrefix("100::/64"),        // discard-only
+	netip.MustParsePrefix("2001::/23"),       // IETF protocol assignments: Teredo, benchmarking, ORCHID
 	netip.MustParsePrefix("2001:db8::/32"),   // documentation
+	netip.MustParsePrefix("2002::/16"),       // 6to4
 	netip.MustParsePrefix("3fff::/20"),       // documentation
+	netip.MustParsePrefix("5f00::/16"),       // SRv6 SIDs
+	netip.MustParsePrefix("fec0::/10"),       // site-local, deprecated
 }
 
 // isPublicAddr reports whether a fetch may connect to ip: a public unicast
